@@ -1,0 +1,37 @@
+version: 2
+
+jobs:
+  single_build:
+    docker:
+      - image: obono/tinyjoypad-env
+    working_directory: /home/circleci/working
+    steps:
+      - checkout
+      - run:
+          name: Build
+          command: .circleci/build.sh ${CIRCLE_BRANCH%_dev}
+  build_and_deploy:
+    docker:
+      - image: obono/tinyjoypad-env
+    working_directory: /home/circleci/working
+    steps:
+      - checkout
+      - run:
+          name: Build
+          command: .circleci/build.sh all
+      - run:
+          name: Push to GitHub
+          command: .circleci/git_push.sh
+
+workflows:
+  version: 2
+  workflow:
+    jobs:
+      - single_build:
+          filters:
+            branches:
+              only: /.*_dev/
+      - build_and_deploy:
+          filters:
+            branches:
+              only: main
