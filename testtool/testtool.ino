@@ -36,7 +36,9 @@ void setup(void)
 {
     initCore();
 #ifdef ENABLE_EEPROM
-    loadRecord(RECORD_TOKEN, &record, sizeof(RECORD_T));
+    if (loadRecord(RECORD_TOKEN, &record, sizeof(RECORD_T))) {
+        record.playCount = 0; //  initialize record
+    }
     record.playCount++;
     storeRecord(RECORD_TOKEN, &record, sizeof(RECORD_T));
 #endif

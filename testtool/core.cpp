@@ -49,9 +49,9 @@ typedef struct {
 
 /*  Macro functions  */
 
-#define isNegativeRange(v)  ((v) >= 750 && (v) < 950)
-#define isPositiveRange(v)  ((v) >= 500 && (v) < 750)
-#define getAxisState(pin)   (((1200 - analogRead(pin)) & 0x300) >> 8)
+#define is88KRange(v)       ((v) <= 920 && (v) > 715)
+#define is33KRange(v)       ((v) <= 715 && (v) > 573)
+#define getAxisState(pin)   ((1024 - analogRead(pin)) / 150)
 #define enableSoundTimer()  bitSet(TIMSK, OCIE1A)
 #define disableSoundTimer() bitClear(TIMSK, OCIE1A)
 #define checkSumSeed(v)     ((uint8_t)(((v) >> 24 & 0xFF) * 249 ^ ((v) >> 16 & 0xFF) * 251 ^ \
@@ -179,10 +179,10 @@ void updateButtonState(void)
 #else
     buttonState = 0;
     uint16_t xAxis = analogRead(PIN_X_AXIS), yAxis = analogRead(PIN_Y_AXIS);
-    if (isNegativeRange(xAxis)) buttonState |= LEFT_BUTTON;
-    if (isPositiveRange(xAxis)) buttonState |= RIGHT_BUTTON;
-    if (isNegativeRange(yAxis)) buttonState |= UP_BUTTON;
-    if (isPositiveRange(yAxis)) buttonState |= RIGHT_BUTTON;
+    if (is88KRange(xAxis)) buttonState |= LEFT_BUTTON;
+    if (is33KRange(xAxis)) buttonState |= RIGHT_BUTTON;
+    if (is88KRange(yAxis)) buttonState |= DOWN_BUTTON;
+    if (is33KRange(yAxis)) buttonState |= UP_BUTTON;
     if (digitalRead(PIN_BUTTON) == LOW) buttonState |= A_BUTTON;
 #endif
 }
@@ -363,7 +363,7 @@ static void setupSoundTimer(uint16_t frequency, uint16_t duration)
         ocr >>= 1;
     }
     TCCR1 = 0b10000000 | prescalarBits; // CTC1=1, PWM1A=0, COM1A=00
-    OCR1A = OCR1C = ocr - 1;
+    OCR1C = ocr - 1;
     TCNT1 = 0;
     enableSoundTimer();
 }

@@ -21,8 +21,8 @@
 
 #define LEFT_BUTTON     bit(0)
 #define RIGHT_BUTTON    bit(1)
-#define UP_BUTTON       bit(2)
-#define DOWN_BUTTON     bit(3)
+#define DOWN_BUTTON     bit(2)
+#define UP_BUTTON       bit(3)
 #define A_BUTTON        bit(4)
 
 #define BLACK           0

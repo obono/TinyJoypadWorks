@@ -6,7 +6,7 @@
 
 #define FPS             30
 #define APP_CODE        "OBN-T00"
-#define APP_VERSION     "0.3"
+#define APP_VERSION     "0.4"
 #define RECORD_TOKEN    0x004E424FUL // "OBN\x00"
 
 #define STRING_BUFFERS      4
