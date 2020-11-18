@@ -20,6 +20,9 @@ jobs:
           name: Build
           command: .circleci/build.sh all
       - run:
+          name: Update information
+          command: .circleci/jq_repo.sh | mustache .circleci/README.md.mustache > README.md
+      - run:
           name: Push to GitHub
           command: .circleci/git_push.sh
 
