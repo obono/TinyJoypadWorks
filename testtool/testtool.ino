@@ -36,11 +36,11 @@ void setup(void)
 {
     initCore();
 #ifdef ENABLE_EEPROM
-    if (loadRecord(RECORD_TOKEN, &record, sizeof(RECORD_T))) {
+    if (loadRecord(RECORD_TOKEN, RECORD_OFFSET, &record, sizeof(RECORD_T))) {
         record.playCount = 0; //  initialize record
     }
     record.playCount++;
-    storeRecord(RECORD_TOKEN, &record, sizeof(RECORD_T));
+    storeRecord(RECORD_TOKEN, RECORD_OFFSET, &record, sizeof(RECORD_T));
 #endif
     callInitFunc(mode);
     targetTime = millis();

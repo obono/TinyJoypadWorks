@@ -95,7 +95,7 @@ PROGMEM static const uint8_t ssd1306InitSequence[] = { // Initialization Sequenc
 };
 
 PROGMEM static const uint32_t imgFont[] = {
-    0x00000000, 0x00017000, 0x000C00C0, 0x0A7CA7CA, 0x0855F542, 0x19484253, 0x1251F55E, 0x00003000,
+                0x00017000, 0x000C00C0, 0x0A7CA7CA, 0x0855F542, 0x19484253, 0x1251F55E, 0x00003000,
     0x00452700, 0x001C9440, 0x0519F314, 0x0411F104, 0x00000420, 0x04104104, 0x00000400, 0x01084210,
     0x0F45145E, 0x0001F040, 0x13555559, 0x0D5D5551, 0x087C928C, 0x0D555557, 0x0D55555E, 0x010C5251,
     0x0F55555E, 0x0F555556, 0x0000A000, 0x0000A400, 0x0028C200, 0x0028A280, 0x00086280, 0x000D5040,
@@ -130,6 +130,13 @@ static bool     isRecordVirgin;
 
 void initCore(void)
 {
+#ifdef BUTTON_STATE_OPTIMIZE
+    // Default setting of every pin mode is INPUT.
+#ifdef ENABLE_SOUND
+    DDRB |= PIN_BIT_SOUND;
+    PORTB &= ~PIN_BIT_SOUND;
+#endif
+#else
     pinMode(PIN_X_AXIS, INPUT);
     pinMode(PIN_Y_AXIS, INPUT);
     pinMode(PIN_BUTTON, INPUT);
@@ -137,7 +144,7 @@ void initCore(void)
     pinMode(PIN_SOUND, OUTPUT);
     digitalWrite(PIN_SOUND, LOW);
 #endif
-
+#endif
     SIMPLEWIRE::begin();
     memcpy_P(wireBuffer, ssd1306InitSequence, sizeof(ssd1306InitSequence));
     SIMPLEWIRE::write(SSD1306_ADDRESS, wireBuffer, sizeof(ssd1306InitSequence));
@@ -303,7 +310,11 @@ void drawStrings(int16_t y)
         int8_t x = p->x;
         char c, *pChar = p->pString;
         while ((c = (p->isPgm) ? pgm_read_byte(pChar++) : *pChar++)) {
-            uint32_t glyph = pgm_read_dword(&imgFont[c - ' ']);
+            if (c <= ' ' || c > '_') {
+                x += FONT_W;
+                continue;
+            }
+            uint32_t glyph = pgm_read_dword(&imgFont[c - '!']);
             uint8_t *pDest = &wireBuffer[1 + x];
             for (uint8_t w = FONT_W; w > 0; w--, x++, glyph >>= FONT_H, *pDest++) {
                 if (x < 0 || x >= WIDTH) continue;
@@ -389,13 +400,13 @@ ISR(TIMER1_COMPA_vect)
 
 #ifdef ENABLE_EEPROM
 
-bool loadRecord(uint32_t signature, void *pRecord, size_t size)
+bool loadRecord(uint32_t signature, uint16_t address, void *pRecord, size_t size)
 {
     isRecordVirgin = true;
     eeprom_busy_wait();
-    if (eeprom_read_dword(0) == signature) {
-        eeprom_read_block(pRecord, (const void *)EEPROM_TOKEN_SIZE, size);
-        uint8_t checkSum = eeprom_read_byte((const uint8_t *)(size + EEPROM_TOKEN_SIZE));
+    if (eeprom_read_dword((const uint32_t *)address) == signature) {
+        eeprom_read_block(pRecord, (const void *)(address + EEPROM_TOKEN_SIZE), size);
+        uint8_t checkSum = eeprom_read_byte((const uint8_t *)(address + EEPROM_TOKEN_SIZE + size));
         for (uint8_t i = 0, *p = (uint8_t *)pRecord; i < size; i++, p++) {
             checkSum -= *p * ((i << 1) | 1);
         }
@@ -404,16 +415,16 @@ bool loadRecord(uint32_t signature, void *pRecord, size_t size)
     return isRecordVirgin;
 }
 
-void storeRecord(uint32_t signature, void *pRecord, size_t size)
+void storeRecord(uint32_t signature, uint16_t address, void *pRecord, size_t size)
 {
     uint8_t checkSum = checkSumSeed(signature);
     for (uint8_t i = 0, *p = (uint8_t *)pRecord; i < size; i++, p++) {
         checkSum += *p * ((i << 1) | 1);
     }
     eeprom_busy_wait();
-    if (isRecordVirgin) eeprom_write_dword(0, signature);
-    eeprom_write_block(pRecord, (void *)EEPROM_TOKEN_SIZE, size);
-    eeprom_write_byte((uint8_t *)(size + EEPROM_TOKEN_SIZE), checkSum);
+    if (isRecordVirgin) eeprom_write_dword((uint32_t *)address, signature);
+    eeprom_write_block(pRecord, (void *)(address + EEPROM_TOKEN_SIZE), size);
+    eeprom_write_byte((uint8_t *)(address + EEPROM_TOKEN_SIZE + size), checkSum);
     isRecordVirgin = false;
 }
 

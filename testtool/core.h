@@ -59,8 +59,8 @@ void    playScore(const uint8_t *pScore);
 #endif
 
 #ifdef ENABLE_EEPROM
-bool    loadRecord(uint32_t signature, void *pRecord, size_t size);
-void    storeRecord(uint32_t signature, void *pRecord, size_t size);
+bool    loadRecord(uint32_t signature, uint16_t address, void *pRecord, size_t size);
+void    storeRecord(uint32_t signature, uint16_t address, void *pRecord, size_t size);
 #endif
 
 /*  Macro Functions  */
