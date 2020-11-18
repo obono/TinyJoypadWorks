@@ -18,7 +18,7 @@ fi
 
 for project in ${projects}
 do
-	version=`${BIN_DIR}/get_version.sh ${project}`
+	version=`${BIN_DIR}/get_attr.sh ${project} APP_VERSION`
 	if [ -z ${version} ]
 	then
 		echo "Failed to get version of \"${project}\"" >&2
