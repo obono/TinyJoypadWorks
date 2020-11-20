@@ -11,7 +11,7 @@ app_code=$2
 version=$3
 
 base_json=`cat ${project}/info.json` || exit 1
-preview=`find ${project} -iregex ".*\.\(gif\|png\)$" | sort | sed 's/[^ ]\+/"&",/g' | sed -e "$ s/,//"`
+preview=`find ${project}/preview -iregex ".*\.\(gif\|png\)$" | sort | sed 's/[^ ]\+/"&",/g' | sed -e "$ s/,//"`
 
 echo ${base_json} | jq ". | .+
 {
