@@ -5,9 +5,13 @@ Making mini games for [TinyJoypad](https://www.tinyjoypad.com/tinyjoypad_attiny8
 ## Products
 
 * OBN-T00 [Test tool](https://raw.githubusercontent.com/obono/TinyJoypadWorks/main/_hexs/testtool_v0.5.hex)
-  * Version 0.5 (released on Novemver 2, 2020)
+  * Version 0.5 (updated on November 17, 2020)
   * For operation confirmation.\
     ![screenshot](testtool/preview/1_top.gif) ![screenshot](testtool/preview/2_button.gif) ![screenshot](testtool/preview/3_character.gif)
+* OBN-T01 [Hollow Seeker](https://raw.githubusercontent.com/obono/TinyJoypadWorks/main/_hexs/hollowseeker_v0.1.hex)
+  * Version 0.1 (released on Novemver 20, 2020)
+  * Go forward in right direction. Seek a hollow as refuge not to be crushed.\
+    ![screenshot](hollowseeker/preview/1_title.gif) ![screenshot](hollowseeker/preview/2_playing.gif) ![screenshot](hollowseeker/preview/3_playing.gif)
 
 ## Build enviroment
 
