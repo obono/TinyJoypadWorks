@@ -3,12 +3,18 @@
 
 /*  Defines  */
 
-#define BOARD_SIZE  9
-#define CELL_SIZE   7
-#define UNIT_SIZE   (CELL_SIZE * 3)
+#define BOARD_SIZE      9
+#define SECTION_SIZE    3
+#define SECTIONS        (BOARD_SIZE / SECTION_SIZE)
 
-#define DIGITS      (BOARD_SIZE + 1)
-#define LONG_PRESS  10
+#define CELL_PX         7
+#define SECTION_PX      (SECTION_SIZE * CELL_PX)
+#define BOARD_PX        (BOARD_SIZE * CELL_PX)
+#define BOARD_LEFT      28
+
+#define DIGITS          (BOARD_SIZE + 1)
+#define SHORT_PRESS     (FPS / 2)
+#define LONG_PRESS      (FPS * 3)
 
 enum : uint8_t {
     SPR_ID_STATE = 0,
@@ -18,20 +24,28 @@ enum : uint8_t {
     SPR_ID_LOCKED
 };
 
+enum : uint8_t {
+    SEGMENT_COLUMN = 0,
+    SEGMENT_ROW,
+    SEGMENT_SECTION,
+    SEGMENT_MAX
+};
+
 /*  Typedefs  */
 
 typedef struct {
-    uint8_t     number : 4;
-    uint8_t     locked : 1;
+    uint8_t number : 4;
+    uint8_t locked : 1;
 } CELL_T;
 
 /*  Macro functions  */
 
-#define getUnitIndex(x, y)  ((y) / 3 * 3 + (x) / 3)
+#define getUnitIndex(x, y)  ((y) / SECTION_SIZE * SECTION_SIZE + (x) / SECTION_SIZE)
 
 /*  Local Functions  */
 
 static void     initPuzzle(void);
+static void     resetPuzzle(void);
 static void     placeNumber(uint8_t x, uint8_t y, uint8_t n);
 static void     removeNumber(uint8_t x, uint8_t y);
 static void     updateState(uint8_t x, uint8_t y, uint8_t n, bool isPlace);
@@ -44,10 +58,12 @@ static void     setSelectingSprite(void);
 
 /*  Global Variables  */
 
+uint8_t level;
+
 /*  Local Variables  */
 
 static CELL_T   board[BOARD_SIZE][BOARD_SIZE];
-static int32_t  boardState[3][BOARD_SIZE], boardFailure;
+static int32_t  boardState[SEGMENT_MAX][BOARD_SIZE], boardFailure;
 static uint8_t  selectedNumber, cursorX, cursorY, placedCount;
 static bool     isSelecting;
 
@@ -63,9 +79,9 @@ void initGame(void)
     isSelecting = false;
     counter = LONG_PRESS;
 
-    initSprites();
     setToolSprite();
     setCursorSprite();
+    setString(1, 93, (const __FlashStringHelper *)&levelString[level * 7],WHITE);
 
     playScore(soundStart);
     isInvalid = true;
@@ -73,77 +89,83 @@ void initGame(void)
 
 MODE_T updateGame(void)
 {
-    MODE_T ret = MODE_GAME;
+    /*  Buttons handling  */
     int8_t vx = isButtonDown(RIGHT_BUTTON) - isButtonDown(LEFT_BUTTON);
     int8_t vy = isButtonDown(DOWN_BUTTON) - isButtonDown(UP_BUTTON);
+    bool isShortPress = false;
+    if (isButtonPressed(A_BUTTON)) {
+        /*  Reset puzzle  */
+        if (counter < LONG_PRESS && ++counter == LONG_PRESS) {
+            resetPuzzle();
+            isSelecting = false;
+            clearSprite(SPR_ID_STATE);
+            playScore(soundStart);
+            isInvalid = true;
+        }
+    } else {
+        if (counter > 0 && counter < SHORT_PRESS) isShortPress = true;
+        counter = 0;
+    }
 
     if (isSelecting) {
         /*  Select tool  */
-        if (vx) {
+        if (vx != 0) {
             selectedNumber = circulate(selectedNumber, vx, DIGITS);
             setToolSprite();
-            playTone(440, 50);
+            playSoundTick();
             isInvalid = true;
         }
         /*  Exit selecting mode  */
         if (isButtonDown(A_BUTTON)) {
             isSelecting = false;
-            playTone(380, 100);
+            counter = LONG_PRESS;
+            playSoundClick();
             isInvalid = true;
         }
     } else {
         /*  Move cursor  */
-        if (vx || vy) {
+        if (vx != 0 || vy != 0) {
             cursorX = circulate(cursorX, vx, BOARD_SIZE);
             cursorY = circulate(cursorY, vy, BOARD_SIZE);
-            playTone(440, 50);
+            playSoundTick();
             isInvalid = true;
         }
-        if (isButtonPressed(A_BUTTON)) {
-            /*  Enter selecting mode  */
-            if (++counter == LONG_PRESS) {
-                isSelecting = true;
-                setSelectingSprite();
-                playTone(500, 100);
+        /*  Place or remove number  */
+        if (isShortPress) {
+            if (board[cursorY][cursorX].locked) {
+                playSoundClick();
+            } else {
+                uint8_t n = board[cursorY][cursorX].number;
+                if (selectedNumber > 0 && n != selectedNumber) {
+                    playScore(soundPlace);
+                    placeNumber(cursorX, cursorY, selectedNumber);
+                } else if (selectedNumber == 0 && n > 0 ||
+                        selectedNumber > 0 && n == selectedNumber) {
+                    playScore(soundRemove);
+                    removeNumber(cursorX, cursorY);
+                }
+                const uint8_t *pImg = NULL;
+                if (boardFailure != 0) {
+                    pImg = imgState[1];
+                } else if (placedCount == BOARD_SIZE * BOARD_SIZE) {
+                    pImg = imgState[0];
+                    playScore(soundComplete);
+                }
+                setSprite(SPR_ID_STATE, 8, 24, pImg, IMG_STATE_W, IMG_STATE_H, DIRECT);
                 isInvalid = true;
             }
-        } else {
-            /*  Place or remove number  */
-            if (counter > 0 && counter < LONG_PRESS) {
-                if (board[cursorY][cursorX].locked) {
-                    playTone(1320, 50);
-                } else {
-                    uint8_t n = board[cursorY][cursorX].number;
-                    if (selectedNumber > 0 && n != selectedNumber) {
-                        placeNumber(cursorX, cursorY, selectedNumber);
-                        playTone(660, 200);
-                    } else if (selectedNumber == 0 && n > 0 ||
-                            selectedNumber > 0 && n == selectedNumber) {
-                        removeNumber(cursorX, cursorY);
-                        playTone(380, 200);
-                    }
-                    const uint8_t *pImg = NULL;
-                    if (boardFailure) {
-                        pImg = imgState[1];
-                    } else if (placedCount == BOARD_SIZE * BOARD_SIZE) {
-                        pImg = imgState[0];
-                    }
-                    setSprite(SPR_ID_STATE, 10, 24, pImg, IMG_STATE_W, IMG_STATE_H, DIRECT);
-                    isInvalid = true;
-                }
-            }
-            counter = 0;
+        }
+        /*  Enter selecting mode  */
+        if (counter == SHORT_PRESS) {
+            isSelecting = true;
+            setSelectingSprite();
+            playSoundClick();
+            isInvalid = true;
         }
     }
     if (!isSelecting) setCursorSprite();
 
-    //if (isButtonDown(A_BUTTON)) {
-    //    initGame();
-    //} else if (--counter == 0) {
-    //    ret = MODE_TITLE;
-    //}
-
-    return ret;
+    return MODE_GAME;
 }
 
 void drawGame(int16_t y, uint8_t *pBuffer)
@@ -155,19 +177,19 @@ void drawGame(int16_t y, uint8_t *pBuffer)
     for (uint8_t bx = 0; bx < BOARD_SIZE; bx++) {
         uint8_t n1 = board[by][bx].number;
         uint8_t n2 = board[by + 1][bx].number;
-        uint8_t *p = pBuffer + 34 + bx * CELL_SIZE;
+        uint8_t *p = pBuffer + BOARD_LEFT + 2 + bx * CELL_PX;
         const uint8_t *pImg1 = imgDigit[n1];
         const uint8_t *pImg2 = imgDigit[n2];
         for (uint8_t w = 0; w < IMG_DIGIT_W; w++) {
-            *p++ = pgm_read_byte(pImg1++) >> by | pgm_read_byte(pImg2++) << (CELL_SIZE - by);
+            *p++ = pgm_read_byte(pImg1++) >> by | pgm_read_byte(pImg2++) << (CELL_PX - by);
         }
     }
 
     /*  Grid  */
-    uint8_t dy = (y + CELL_SIZE - 1) / CELL_SIZE * CELL_SIZE;
-    for (uint8_t ptn = 1 << (dy - y); ptn; ptn <<= CELL_SIZE, dy += CELL_SIZE) {
-        uint8_t vx = (dy % UNIT_SIZE == 0) ? CELL_SIZE : UNIT_SIZE;
-        for (uint8_t x = 32; x < 96; x += vx) {
+    uint8_t dy = (y + CELL_PX - 1) / CELL_PX * CELL_PX;
+    for (uint8_t ptn = 1 << (dy - y); ptn; ptn <<= CELL_PX, dy += CELL_PX) {
+        uint8_t vx = (dy % SECTION_PX == 0) ? CELL_PX : SECTION_PX;
+        for (uint8_t x = BOARD_LEFT; x <= BOARD_LEFT + BOARD_PX; x += vx) {
             *(pBuffer + x) |= ptn;
         }
     }
@@ -179,26 +201,53 @@ void drawGame(int16_t y, uint8_t *pBuffer)
 
 static void initPuzzle(void)
 {
+    /*  Generate shuffle table  */
+    uint8_t table[SEGMENT_MAX][BOARD_SIZE];
+    uint8_t *pTable = (uint8_t *)table;
+    for (uint8_t segment = 0; segment < SEGMENT_MAX; segment++) {
+        uint8_t n1 = random(SECTIONS) + SECTIONS;
+        int8_t v1 = random(2) * 2 - 1;
+        for (uint8_t j = 0; j < SECTIONS; j++, n1 += v1) {
+            uint8_t n2 = random(SECTION_SIZE) + SECTION_SIZE;
+            int8_t v2 = random(2) * 2 - 1;
+            for (uint8_t k = 0; k < SECTION_SIZE; k++, n2 += v2) {
+                *pTable++ = n1 % SECTIONS * SECTION_SIZE + n2 % SECTION_SIZE;
+            }
+        }
+    }
+
+    /*  Place preset numbers  */
     memset(board, 0, sizeof(board));
     memset(boardState, 0, sizeof(boardState));
     placedCount = 0;
     boardFailure = 0;
+    const int32_t *pData = puzzleData[0/*random(PUZZLES_PER_LEVEL) + level * PUZZLES_PER_LEVEL*/];
     for (uint8_t y = 0; y < BOARD_SIZE; y++) {
-        int32_t rowData = (int32_t)pgm_read_dword(&puzzleData[0][y]);
+        int32_t rowData = pgm_read_dword(pData++);
         for (uint8_t x = 0; x < BOARD_SIZE; x++) {
             uint8_t n = rowData % DIGITS;
-            if (n) {
-                placeNumber(x, y, n);
-                board[y][x].locked = true;
+            if (n > 0) {
+                uint8_t bx = table[SEGMENT_COLUMN][x], by = table[SEGMENT_ROW][y];
+                placeNumber(bx, by, table[SEGMENT_SECTION][n - 1] + 1);
+                board[by][bx].locked = true;
             }
             rowData /= (int32_t)DIGITS;
         }
     }
 }
 
+static void resetPuzzle(void)
+{
+    for (uint8_t y = 0; y < BOARD_SIZE; y++) {
+        for (uint8_t x = 0; x < BOARD_SIZE; x++) {
+            if (!board[y][x].locked) removeNumber(x, y);
+        }
+    }
+}
+
 static void placeNumber(uint8_t x, uint8_t y, uint8_t n)
 {
-    if (board[y][x].number > 0) removeNumber(x, y);
+    removeNumber(x, y);
     board[y][x].number = n;
     placedCount++;
     updateState(x, y, n, true);
@@ -216,13 +265,18 @@ static void removeNumber(uint8_t x, uint8_t y)
 static void updateState(uint8_t x, uint8_t y, uint8_t n, bool isPlace)
 {
     int32_t q = powDigits(n);
-    for (uint8_t i = 0; i < 3; i++) {
-        uint8_t idx = (i == 2) ? getUnitIndex(x, y) : ((i == 1) ? y : x);
-        boardState[i][idx] += (isPlace) ? q : -q;
-        uint8_t a = boardState[i][idx] / q % DIGITS;
-        uint8_t b = i * DIGITS + n;
-        if (isPlace  && a == 2) bitSet(boardFailure, b);
-        if (!isPlace && a == 1) bitClear(boardFailure, b);
+    for (uint8_t segment = 0; segment < SEGMENT_MAX; segment++) {
+        uint8_t idx = (segment == SEGMENT_SECTION) ?
+                getUnitIndex(x, y) : ((segment == SEGMENT_ROW) ? y : x);
+        boardState[segment][idx] += (isPlace) ? q : -q;
+        uint8_t a = boardState[segment][idx] / q % DIGITS;
+        uint8_t b = segment * BOARD_SIZE + idx;
+        if (isPlace && a >= 2) {
+            playScore(soundFailure);
+            bitSet(boardFailure, b);
+        } else if (!isPlace && a <= 1) {
+            bitClear(boardFailure, b);
+        }
     }
 }
 
@@ -239,19 +293,31 @@ static int32_t powDigits(uint8_t n)
 
 static void setToolSprite(void)
 {
-    setSprite(SPR_ID_TOOL, 106, 24, imgTool[!selectedNumber], IMG_TOOL_W, IMG_TOOL_H, DIRECT);
-    setSprite(SPR_ID_NUMBER, 110, 25, imgDigit[selectedNumber], IMG_DIGIT_W, IMG_DIGIT_H, WHITE);
+    setSprite(SPR_ID_TOOL, 104, 24, imgTool[!selectedNumber], IMG_TOOL_W, IMG_TOOL_H, DIRECT);
+    setSprite(SPR_ID_NUMBER, 108, 25, imgDigit[selectedNumber], IMG_DIGIT_W, IMG_DIGIT_H, WHITE);
 }
 
 static void setCursorSprite(void)
 {
-    setSprite(SPR_ID_CURSOR, cursorX * CELL_SIZE + 32, cursorY * CELL_SIZE, imgCursor,
+    setSprite(SPR_ID_CURSOR, BOARD_LEFT + cursorX * CELL_PX, cursorY * CELL_PX, imgCursor,
             IMG_CURSOR_W, IMG_CURSOR_H, WHITE);
-    setSprite(SPR_ID_LOCKED, 108, 40, (board[cursorY][cursorX].locked) ? imgLocked : NULL,
+    setSprite(SPR_ID_LOCKED, 106, 40, (board[cursorY][cursorX].locked) ? imgLocked : NULL,
             IMG_LOCKED_W, IMG_LOCKED_H, DIRECT);
 }
 
 static void setSelectingSprite(void)
 {
-    setSprite(SPR_ID_CURSOR, 102, 24, imgSelecting, IMG_SELECTING_W, IMG_SELECTING_H, WHITE);
+    setSprite(SPR_ID_CURSOR, 100, 24, imgSelecting, IMG_SELECTING_W, IMG_SELECTING_H, WHITE);
+}
+
+/*---------------------------------------------------------------------------*/
+
+void playSoundTick(void)
+{
+    playTone(440, 10);
+}
+
+void playSoundClick(void)
+{
+    playTone(587, 20);
 }
