@@ -12,6 +12,10 @@ Making mini games for [TinyJoypad](https://www.tinyjoypad.com/tinyjoypad_attiny8
   * Version 0.1 (released on Novemver 20, 2020)
   * Go forward in right direction. Seek a hollow as refuge not to be crushed.\
     ![screenshot](hollowseeker/preview/1_title.gif) ![screenshot](hollowseeker/preview/2_playing.gif) ![screenshot](hollowseeker/preview/3_playing.gif)
+* OBN-T02 [Number Place](https://raw.githubusercontent.com/obono/TinyJoypadWorks/main/_hexs/numberplace_v0.3.hex)
+  * Version 0.3 (released on January 10, 2021)
+  * A logic-based, combinatorial number-placement puzzle.\
+    ![screenshot](numberplace/preview/1_title.gif) ![screenshot](numberplace/preview/2_start.gif) ![screenshot](numberplace/preview/3_complete.gif)
 
 ## Build enviroment
 
