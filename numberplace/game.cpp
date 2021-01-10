@@ -6,13 +6,16 @@
 #define BOARD_SIZE      9
 #define SECTION_SIZE    3
 #define SECTIONS        (BOARD_SIZE / SECTION_SIZE)
+#define DEFAULT_POS     (BOARD_SIZE / 2)
+
+#define DIGITS          (BOARD_SIZE + 1)
+#define DEFAULT_NUMBER  1
 
 #define CELL_PX         7
 #define SECTION_PX      (SECTION_SIZE * CELL_PX)
 #define BOARD_PX        (BOARD_SIZE * CELL_PX)
 #define BOARD_LEFT      28
 
-#define DIGITS          (BOARD_SIZE + 1)
 #define SHORT_PRESS     (FPS / 2)
 #define LONG_PRESS      (FPS * 3)
 
@@ -56,15 +59,12 @@ static void     setToolSprite(void);
 static void     setCursorSprite(void);
 static void     setSelectingSprite(void);
 
-/*  Global Variables  */
-
-uint8_t level;
-
 /*  Local Variables  */
 
 static CELL_T   board[BOARD_SIZE][BOARD_SIZE];
 static int32_t  boardState[SEGMENT_MAX][BOARD_SIZE], boardFailure;
-static uint8_t  selectedNumber, cursorX, cursorY, placedCount;
+static uint8_t  selectedNumber = DEFAULT_NUMBER, cursorX = DEFAULT_POS, cursorY = DEFAULT_POS;
+static uint8_t  placedCount, presetCount;
 static bool     isSelecting;
 
 /*---------------------------------------------------------------------------*/
@@ -74,8 +74,6 @@ static bool     isSelecting;
 void initGame(void)
 {
     initPuzzle();
-    selectedNumber = 1;
-    cursorX = cursorY = 4;
     isSelecting = false;
     counter = LONG_PRESS;
 
@@ -90,17 +88,13 @@ void initGame(void)
 MODE_T updateGame(void)
 {
     /*  Buttons handling  */
-    int8_t vx = isButtonDown(RIGHT_BUTTON) - isButtonDown(LEFT_BUTTON);
-    int8_t vy = isButtonDown(DOWN_BUTTON) - isButtonDown(UP_BUTTON);
+    handleDpad();
     bool isShortPress = false;
     if (isButtonPressed(A_BUTTON)) {
         /*  Reset puzzle  */
-        if (counter < LONG_PRESS && ++counter == LONG_PRESS) {
-            resetPuzzle();
-            isSelecting = false;
+        if (counter < LONG_PRESS && ++counter == LONG_PRESS && placedCount > presetCount) {
             clearSprite(SPR_ID_STATE);
-            playScore(soundStart);
-            isInvalid = true;
+            initGame();
         }
     } else {
         if (counter > 0 && counter < SHORT_PRESS) isShortPress = true;
@@ -109,8 +103,8 @@ MODE_T updateGame(void)
 
     if (isSelecting) {
         /*  Select tool  */
-        if (vx != 0) {
-            selectedNumber = circulate(selectedNumber, vx, DIGITS);
+        if (dpadX != 0) {
+            selectedNumber = circulate(selectedNumber, dpadX, DIGITS);
             setToolSprite();
             playSoundTick();
             isInvalid = true;
@@ -124,9 +118,9 @@ MODE_T updateGame(void)
         }
     } else {
         /*  Move cursor  */
-        if (vx != 0 || vy != 0) {
-            cursorX = circulate(cursorX, vx, BOARD_SIZE);
-            cursorY = circulate(cursorY, vy, BOARD_SIZE);
+        if (dpadX != 0 || dpadY != 0) {
+            cursorX = circulate(cursorX, dpadX, BOARD_SIZE);
+            cursorY = circulate(cursorY, dpadY, BOARD_SIZE);
             playSoundTick();
             isInvalid = true;
         }
@@ -172,6 +166,15 @@ void drawGame(int16_t y, uint8_t *pBuffer)
 {
     clearScreenBuffer();
 
+    /*  Grid  */
+    int8_t b = 7 - (y + 7) % SECTION_PX;
+    if (b >= 0) {
+        memset(pBuffer + BOARD_LEFT + 1, bit(b), BOARD_PX - 1);
+    }
+    for (uint8_t x = BOARD_LEFT; x <= BOARD_LEFT + BOARD_PX; x += SECTION_PX) {
+        *(pBuffer + x) = 0xFF;
+    }
+
     /*  Digits  */
     uint8_t by = y >> 3;
     for (uint8_t bx = 0; bx < BOARD_SIZE; bx++) {
@@ -181,16 +184,7 @@ void drawGame(int16_t y, uint8_t *pBuffer)
         const uint8_t *pImg1 = imgDigit[n1];
         const uint8_t *pImg2 = imgDigit[n2];
         for (uint8_t w = 0; w < IMG_DIGIT_W; w++) {
-            *p++ = pgm_read_byte(pImg1++) >> by | pgm_read_byte(pImg2++) << (CELL_PX - by);
-        }
-    }
-
-    /*  Grid  */
-    uint8_t dy = (y + CELL_PX - 1) / CELL_PX * CELL_PX;
-    for (uint8_t ptn = 1 << (dy - y); ptn; ptn <<= CELL_PX, dy += CELL_PX) {
-        uint8_t vx = (dy % SECTION_PX == 0) ? CELL_PX : SECTION_PX;
-        for (uint8_t x = BOARD_LEFT; x <= BOARD_LEFT + BOARD_PX; x += vx) {
-            *(pBuffer + x) |= ptn;
+            *p++ |= pgm_read_byte(pImg1++) >> by | pgm_read_byte(pImg2++) << (CELL_PX - by);
         }
     }
 }
@@ -202,6 +196,7 @@ void drawGame(int16_t y, uint8_t *pBuffer)
 static void initPuzzle(void)
 {
     /*  Generate shuffle table  */
+    randomSeed(puzzleSeed);
     uint8_t table[SEGMENT_MAX][BOARD_SIZE];
     uint8_t *pTable = (uint8_t *)table;
     for (uint8_t segment = 0; segment < SEGMENT_MAX; segment++) {
@@ -221,7 +216,7 @@ static void initPuzzle(void)
     memset(boardState, 0, sizeof(boardState));
     placedCount = 0;
     boardFailure = 0;
-    const int32_t *pData = puzzleData[0/*random(PUZZLES_PER_LEVEL) + level * PUZZLES_PER_LEVEL*/];
+    const int32_t *pData = puzzleData[random(PUZZLES_PER_LEVEL) + level * PUZZLES_PER_LEVEL];
     for (uint8_t y = 0; y < BOARD_SIZE; y++) {
         int32_t rowData = pgm_read_dword(pData++);
         for (uint8_t x = 0; x < BOARD_SIZE; x++) {
@@ -234,15 +229,7 @@ static void initPuzzle(void)
             rowData /= (int32_t)DIGITS;
         }
     }
-}
-
-static void resetPuzzle(void)
-{
-    for (uint8_t y = 0; y < BOARD_SIZE; y++) {
-        for (uint8_t x = 0; x < BOARD_SIZE; x++) {
-            if (!board[y][x].locked) removeNumber(x, y);
-        }
-    }
+    presetCount = placedCount;
 }
 
 static void placeNumber(uint8_t x, uint8_t y, uint8_t n)
@@ -308,16 +295,4 @@ static void setCursorSprite(void)
 static void setSelectingSprite(void)
 {
     setSprite(SPR_ID_CURSOR, 100, 24, imgSelecting, IMG_SELECTING_W, IMG_SELECTING_H, WHITE);
-}
-
-/*---------------------------------------------------------------------------*/
-
-void playSoundTick(void)
-{
-    playTone(440, 10);
-}
-
-void playSoundClick(void)
-{
-    playTone(587, 20);
 }

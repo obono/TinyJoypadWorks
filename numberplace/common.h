@@ -4,9 +4,9 @@
 
 /*  Defines  */
 
-#define FPS             30
+#define FPS             20
 #define APP_CODE        "OBN-T02"
-#define APP_VERSION     "0.2"
+#define APP_VERSION     "0.3"
 #define RECORD_TOKEN    0x024E424FUL // "OBN\x02"
 
 enum MODE_T : uint8_t {
@@ -34,9 +34,12 @@ MODE_T  updateTitle(void);
 void    initGame(void);
 MODE_T  updateGame(void);
 void    drawGame(int16_t y, uint8_t *pBuffer);
+void    handleDpad(void);
 void    playSoundTick(void);
 void    playSoundClick(void);
 
 /*  Global Variables  */
 
+extern int16_t  puzzleSeed;
+extern int8_t   dpadX, dpadY;
 extern uint8_t  level;

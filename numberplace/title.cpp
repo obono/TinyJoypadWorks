@@ -45,9 +45,9 @@ void initTitle(void)
 MODE_T updateTitle(void)
 {
     MODE_T ret = MODE_TITLE;
-    int8_t vx = isButtonDown(RIGHT_BUTTON) - isButtonDown(LEFT_BUTTON);
-    if (vx != 0) {
-        level = circulate(level, vx, (LEVEL_MAX - 1));
+    handleDpad();
+    if (dpadX != 0) {
+        level = circulate(level, dpadX, (LEVEL_MAX - 1));
         moveSprite(SPR_ID_CURSOR, level * 48 + !level * 12 - 5, IMG_CURSOR_TOP);
         playSoundTick();
         isInvalid = true;
@@ -57,6 +57,7 @@ MODE_T updateTitle(void)
         if (level == LEVEL_HARD && isButtonPressed(UP_BUTTON)) level = LEVEL_EXPERT; // Secret!!
         ret = MODE_GAME;
     }
-    randomSeed(rand()); // Shuffle random
+    puzzleSeed = rand();
+    randomSeed(puzzleSeed); // Shuffle random
     return ret;
 }
