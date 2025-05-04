@@ -17,7 +17,7 @@ Making mini games for [TinyJoypad](https://www.tinyjoypad.com/tinyjoypad_attiny8
   * A logic-based, combinatorial number-placement puzzle.\
     ![screenshot](numberplace/preview/1_title.gif) ![screenshot](numberplace/preview/2_start.gif) ![screenshot](numberplace/preview/3_complete.gif)
 * OBN-T03 [2048](https://raw.githubusercontent.com/obono/TinyJoypadWorks/main/_hexs/t2048_v0.1.hex)
-  * Version 0.1 (released on May XX, 2025)
+  * Version 0.1 (released on May 4, 2025)
   * Join the tiles, get to 2048.\
     ![screenshot](t2048/preview/1_title.gif) ![screenshot](t2048/preview/2_playing.gif) ![screenshot](t2048/preview/3_playing.gif)
 
