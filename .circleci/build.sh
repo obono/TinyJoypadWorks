@@ -25,8 +25,8 @@ do
 		exit 1
 	fi
 	echo "--- Building \"${project}\"..."
-	arduino-cli compile --fqbn ATTinyCore:avr:attinyx5:LTO=enable,TimerClockSource=default,chip=85,clock=16pll,eesave=aenable,bod=disable,millis=enabled ${project} || exit 1
-	cp -f ${project}/build/ATTinyCore.avr.attinyx5/${project}.ino.hex ${OUT_DIR}/${project}_v${version}.hex
+	arduino-cli compile --fqbn ATTinyCore:avr:attinyx5:LTO=enable,TimerClockSource=default,chip=85,clock=16pll,eesave=aenable,bod=disable,millis=enabled --output-dir ${project} ${project} || exit 1
+	cp -f ${project}/${project}.ino.hex ${OUT_DIR}/${project}_v${version}.hex
 	echo "--- Completed!"
 	echo
 done
