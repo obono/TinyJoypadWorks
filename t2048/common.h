@@ -6,7 +6,7 @@
 
 #define FPS             30
 #define APP_CODE        "OBN-T03"
-#define APP_VERSION     "0.1"
+#define APP_VERSION     "0.2"
 #define RECORD_TOKEN    0x034E424FUL // "OBN\x03"
 
 enum MODE_T : uint8_t {

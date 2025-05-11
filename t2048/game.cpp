@@ -82,6 +82,8 @@ MODE_T updateGame(void)
             if (moveTiles(moveVx, moveVy)) {
                 counter = 1;
                 state = STATE_MOVING;
+            } else {
+                if (counter < 18) isInvalid = true;
             }
         }
     } else if (state == STATE_MOVING) {
@@ -188,7 +190,7 @@ static void updateTiles(void)
             TILE_T *p = &board[y][x];
             if (p->merged) {
                 p->value++;
-                score += 1 << p->value;
+                score += 1UL << p->value;
                 if (soundValue < p->value) soundValue = p->value;
             }
             if (p->value > 0) {
@@ -238,14 +240,15 @@ static void updateSprites(void)
             for (int8_t y = 0, idx = 0; y < BOARD_SIZE; y++) {
                 for (int8_t x = 0; x < BOARD_SIZE; x++, idx++) {
                     TILE_T *p = &board[y][x];
+                    int8_t gx = 0, gy = 0;
                     if (p->merged && p->value >= counter) {
                         int8_t g = p->value - counter;
-                        int8_t gx = random(g * 2 + 1) - g;
-                        int8_t gy = g - abs(gx);
+                        gx = random(g * 2 + 1) - g;
+                        gy = g - abs(gx);
                         if (random(2)) gy = -gy;
-                        moveSprite(idx, x * IMG_TILE_W + gx, y * IMG_TILE_H + gy);
                         isInvalid = true;
                     }
+                    moveSprite(idx, x * IMG_TILE_W + gx, y * IMG_TILE_H + gy);
                 }
             }
             if (addedIdx >= 0 && counter < 8) {
